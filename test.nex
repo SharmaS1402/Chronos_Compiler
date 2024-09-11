@@ -1,1 +1,1 @@
-return 404;
+exit 20;
