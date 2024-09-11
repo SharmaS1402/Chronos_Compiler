@@ -4,6 +4,8 @@
 #include <experimental/optional>
 #include <vector>
 
+#include "../parser.hpp"
+#include "../generation.hpp"
 #include "../tokenization.hpp"
 
 using namespace std;
@@ -29,24 +31,6 @@ using namespace std;
 //     }
 // }
 
-string tokens_to_asm(const vector<Token> &tokens) {
-    stringstream output;
-    int n = tokens.size();
-    output << "global _start \n _start: \n";
-    for(int i = 0; i < n; i++) {
-        const Token& token = tokens.at(i);
-        if(token.type == TokenType::exit) {
-            if(i + 1 < n && tokens.at(i + 1).type == TokenType::int_lit) {
-                if(i + 2 < n && tokens.at(i + 2).type == TokenType::semi) {
-                    output << "    mov rax, 60 \n";
-                    output << "    mov rdi, " << tokens.at(i + 1).value.value() << "\n";
-                    output << "    syscall";
-                }
-            }
-        }
-    }
-    return output.str();
-}
 int main(int argc, char** argv) {
 
     if(argc != 2) {
@@ -69,10 +53,18 @@ int main(int argc, char** argv) {
     Tokenizer tokenizer(move(contents));
     vector<Token> tokens = tokenizer.tokenize();
     // printTokens(tokens);
+    Parser parser(move(tokens));
+    experimental::optional<NodeExit> tree = parser.parse();
+    if(tree == experimental::nullopt) {
+        cerr << "No exit statement found" << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    Generator generator(tree.value());
 
     {
         fstream file("../out.asm", ios::out);
-        file << tokens_to_asm(tokens);
+        file << generator.generate();
     }
 
     return 0;
