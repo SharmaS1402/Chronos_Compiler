@@ -2,7 +2,7 @@
 
 #include<string> 
 #include<vector>
-#include<experimental/optional>
+#include<optional>
 #include<cctype>
 
 using namespace std;
@@ -10,15 +10,20 @@ using namespace std;
 enum class TokenType {
     exit,
     int_lit, 
-    semi
+    semi,
+    open_par,
+    close_par,
+    ident,
+    let,
+    eq
 };
 
 struct Token {
     TokenType type;
-    experimental::optional<string> value;
+    optional<string> value;
 };
 
-bool has_value(const std::experimental::optional<char>& opt) {
+bool has_value(const optional<char>& opt) {
     return static_cast<bool>(opt);  // Converts the optional to bool
 }
 
@@ -33,11 +38,10 @@ class Tokenizer {
     vector<Token> tokenize() {
         vector<Token> tokens;
         string buf = "";
-        experimental::nullopt;
-        while(peak().value() != NULL) {
+        while(peak().has_value()) {
             if(isalpha(peak().value())) {
                 buf.push_back(consume());
-                while(peak().value() != NULL && isalnum(peak().value())) {
+                while(peak().has_value() && isalnum(peak().value())) {
                     buf.push_back(consume());
                 }
                 if(buf == "exit") {
@@ -45,22 +49,40 @@ class Tokenizer {
                     buf.clear();
                     continue;
                 }
+                else if(buf == "let") {
+                    tokens.push_back({.type = TokenType::let});
+                    buf.clear();
+                    continue;
+                }
                 else {
-                    cerr << "You messed up.." << endl;
-                    exit(EXIT_FAILURE);
+                    tokens.push_back({.type = TokenType::ident, .value = buf});
+                    buf.clear();
+                    continue;
                 }
             }
             else if(isdigit(peak().value())) {
                 buf.push_back(consume());
-                while(peak().value() != NULL && isdigit(peak().value())) {
+                while(peak().has_value() && isdigit(peak().value())) {
                     buf.push_back(consume());
                 }
                 tokens.push_back({.type = TokenType:: int_lit, .value = buf});
                 buf.clear();
             }
+            else if(peak().value() == '(') {
+                consume();
+                tokens.push_back({.type = TokenType::open_par});
+            }
+            else if(peak().value() == ')') {
+                consume();
+                tokens.push_back({.type = TokenType::close_par});
+            }
+            else if(peak().value() == '=') {
+                consume();
+                tokens.push_back({.type = TokenType::eq});
+            }
             else if(peak().value() == ';') {
-                tokens.push_back({.type = TokenType::semi}); 
                 consume();               
+                tokens.push_back({.type = TokenType::semi}); 
                 continue;
             }
             else if(isspace(peak().value())) {
@@ -68,7 +90,7 @@ class Tokenizer {
                 continue;
             }
             else {
-                cerr << "You messed up " << endl;
+                cerr << "You messed up" << endl;
                 exit(EXIT_FAILURE);
             }
         }
@@ -80,12 +102,12 @@ class Tokenizer {
         const string m_src;
         int m_index = 0;
         
-        [[nodiscard]]experimental::optional<char> peak(int ahead = 1) {
-            if(m_index + ahead > m_src.length()) {
-                return NULL;
+        [[nodiscard]]optional<char> peak(int offset = 0) {
+            if(m_index + offset >= m_src.length()) {
+                return {};
             }
             else {
-                return m_src.at(m_index);
+                return m_src.at(m_index + offset);
             }
         }
 

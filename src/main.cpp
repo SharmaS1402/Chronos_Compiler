@@ -1,7 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <experimental/optional>
+#include <optional>
 #include <vector>
 
 #include "../parser.hpp"
@@ -54,19 +54,21 @@ int main(int argc, char** argv) {
     vector<Token> tokens = tokenizer.tokenize();
     // printTokens(tokens);
     Parser parser(move(tokens));
-    experimental::optional<NodeExit> tree = parser.parse();
-    if(tree == experimental::nullopt) {
-        cerr << "No exit statement found" << endl;
+    optional<NodeProg> prog = parser.parseProg();
+    if(!prog.has_value()) {
+        cerr << "Invalid Program" << endl;
         exit(EXIT_FAILURE);
     }
 
-    Generator generator(tree.value());
+    Generator generator(prog.value());
 
     {
         fstream file("../out.asm", ios::out);
-        file << generator.generate();
+        file << generator.gen_prog();
     }
 
+    system("nasm -felf64 ../out.asm");
+    system("ld -o out ../out.o"); 
     return 0;
 
 }
